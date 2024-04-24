@@ -1,10 +1,10 @@
 import random
 import json
 import pickle
-import tensorflow as tf
+
 import nltk
 from nltk.stem import WordNetLemmatizer
-#from tf.keras.models import load_model
+from tensorflow.keras.models import load_model
 
 import numpy as np
 import speech_recognition as sr
@@ -12,18 +12,16 @@ import pyttsx3
 import time
 
 lemmatizer = WordNetLemmatizer()
-# Load intents data
-with open("intents.json", "r") as file:
-    intents = json.load(file)
+intents = json.loads(open("intents.json").read())
 
-words = pickle.load(open('words.pkl', 'rb'))
-classes = pickle.load(open('classes.pkl', 'rb'))
-model = tf.keras.models.load_model('chatbot_model.h5')
+words = pickle.load(open("words.pkl", "rb"))
+classes = pickle.load(open("classes.pkl", "rb"))
+model = load_model("chatbot_model.h5")
+
 
 def clean_up_sentence(sentence):
     sentence_words = nltk.word_tokenize(sentence)
-    sentence_words = [lemmatizer.lemmatize(word)
-                    for word in sentence_words]
+    sentence_words = [lemmatizer.lemmatize(word) for word in sentence_words]
 
     return sentence_words
 
@@ -52,27 +50,25 @@ def predict_class(sentence):
     return_list = []
 
     for r in results:
-        return_list.append({'intent': classes[r[0]],
-                            'probability': str(r[1])})
+        return_list.append({"intent": classes[r[0]], "probability": str(r[1])})
     return return_list
 
 
 def get_response(intents_list, intents_json):
-    if intents_list:    # to SEE if intents_list is NOT EMPTY!
+    result = ""
+    tag = "Unknown"
 
-        tag = intents_list[0]['intent']
-        list_of_intents = intents_json['intents']
+    if len(intents_list):
+        tag = intents_list[0]["intent"]
+    list_of_intents = intents_json["intents"]
 
-        result = ''
+    for i in list_of_intents:
+        if i['tag'] == tag:
+            result = random.choice(i['responses'])
+            break
 
-        for i in list_of_intents:
-            if i['tag'] == tag:
-                result = random.choice(i['responses'])
-                break
-
-        else: result = "I'm sorry, I did not understand that."
-
-    else: result = "I'm sorry, I guess our training model set is an empty.."
+    else:
+        result = "I'm sorry,  I guess our training model set is an empty.."
 
     return result
 
@@ -99,7 +95,8 @@ if __name__ == '__main__':
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
 
-    engine = pyttsx3.init()
+    #engine = pyttsx3.init()
+    engine = pyttsx3.init(driverName="sapi5")
     rate = engine.getProperty('rate')
 
     # Increase the rate of the bot according to need,
@@ -139,7 +136,7 @@ if __name__ == '__main__':
         print("You have chosen to continue with Male Voice")
 
 
-    while True or final.lower() == 'true':
+    while True:
         with mic as symptom:
             print("Say Your Symptoms. The Bot is Listening")
             engine.say("You may tell me your symptoms now. I am listening")
@@ -173,13 +170,18 @@ if __name__ == '__main__':
                     "If you want to continue please say True otherwise say\
                     False.")
                 engine.runAndWait()
-                with mic as ans:
-                    recognizer.adjust_for_ambient_noise(ans, duration=0.5)
-                    voice = recognizer.listen(ans)
-                    final = recognizer.recognize_google(voice)
 
-                    if final.lower() == 'false' or final.lower() == 'please exit':
-                        engine.say("I am happy to have you anytime. Shutting Down now.")
-                        engine.runAndWait()
-                        print("Bot has been stopped by the user")
-                        exit(0)
+        with mic as ans:
+            try:
+                recognizer.adjust_for_ambient_noise(ans, duration=0.5)
+                voice = recognizer.listen(ans)
+                final = recognizer.recognize_google(voice)
+
+                if final.lower() == 'false' or final.lower() == 'please exit':
+                    engine.say("I am happy to have you anytime. Shutting Down now.")
+                    engine.runAndWait()
+                    print("Bot has been stopped by the user")
+                    exit(0)
+            except sr.UnknownValueError:
+                engine.say("Sorry, I did not get that.")
+                engine.runAndWait()
