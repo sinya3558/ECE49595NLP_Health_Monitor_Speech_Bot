@@ -12,7 +12,9 @@ import pyttsx3
 import time
 
 lemmatizer = WordNetLemmatizer()
-intents = json.loads(open("intents.json").read())
+# Load intents data
+with open("intents.json", "r") as file:
+    intents = json.load(file)
 
 words = pickle.load(open('words.pkl', 'rb'))
 classes = pickle.load(open('classes.pkl', 'rb'))
@@ -56,15 +58,22 @@ def predict_class(sentence):
 
 
 def get_response(intents_list, intents_json):
-    tag = intents_list[0]['intent']
-    list_of_intents = intents_json['intents']
+    if intents_list:    # to SEE if intents_list is NOT EMPTY!
 
-    result = ''
+        tag = intents_list[0]['intent']
+        list_of_intents = intents_json['intents']
 
-    for i in list_of_intents:
-        if i['tag'] == tag:
-            result = random.choice(i['responses'])
-            break
+        result = ''
+
+        for i in list_of_intents:
+            if i['tag'] == tag:
+                result = random.choice(i['responses'])
+                break
+
+        else: result = "I'm sorry, I did not understand that."
+
+    else: result = "I'm sorry, I guess our training model set is an empty.."
+
     return result
 
 
@@ -116,7 +125,7 @@ if __name__ == '__main__':
 
     # Asking for the MALE or FEMALE voice.
     with mic as source:
-        recognizer.adjust_for_ambient_noise(source, duration=0.2)
+        recognizer.adjust_for_ambient_noise(source, duration=0.5)
         audio = recognizer.listen(source)
 
     audio = recognizer.recognize_google(audio)
@@ -129,15 +138,14 @@ if __name__ == '__main__':
         engine.setProperty('voice', voices[0].id)
         print("You have chosen to continue with Male Voice")
 
-    """User might skip till HERE"""
 
-    while True or final.lower() == 'True':
+    while True or final.lower() == 'true':
         with mic as symptom:
             print("Say Your Symptoms. The Bot is Listening")
             engine.say("You may tell me your symptoms now. I am listening")
             engine.runAndWait()
             try:
-                recognizer.adjust_for_ambient_noise(symptom, duration=0.2)
+                recognizer.adjust_for_ambient_noise(symptom, duration=0.5)
                 symp = recognizer.listen(symptom)
                 text = recognizer.recognize_google(symp)
                 engine.say("You said {}".format(text))
@@ -152,28 +160,26 @@ if __name__ == '__main__':
                 # Calling the function by passing the voice inputted
                 # symptoms converted into string
                 calling_the_bot(text)
+
             except sr.UnknownValueError:
                 engine.say(
                     "Sorry, Either your symptom is unclear to me or it is\
                     not present in our database. Please Try Again.")
                 engine.runAndWait()
                 print(
-                    "Sorry, Either your symptom is unclear to me or it is\
-                    not present in our database. Please Try Again.")
+                    "Sorry, Either your symptom is unclear to me or it is not present in our database. Please Try Again.")
             finally:
                 engine.say(
                     "If you want to continue please say True otherwise say\
                     False.")
                 engine.runAndWait()
+                with mic as ans:
+                    recognizer.adjust_for_ambient_noise(ans, duration=0.5)
+                    voice = recognizer.listen(ans)
+                    final = recognizer.recognize_google(voice)
 
-        with mic as ans:
-            recognizer.adjust_for_ambient_noise(ans, duration=0.2)
-            voice = recognizer.listen(ans)
-            final = recognizer.recognize_google(voice)
-
-        if final.lower() == 'no' or final.lower() == 'please exit':
-            engine.say("Thank You. Shutting Down now.")
-            engine.runAndWait()
-            print("Bot has been stopped by the user")
-            exit(0)
-
+                    if final.lower() == 'false' or final.lower() == 'please exit':
+                        engine.say("I am happy to have you anytime. Shutting Down now.")
+                        engine.runAndWait()
+                        print("Bot has been stopped by the user")
+                        exit(0)
